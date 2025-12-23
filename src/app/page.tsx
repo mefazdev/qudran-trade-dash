@@ -9,13 +9,14 @@ import { SkeletonCardRow } from "@/components/dashboard/SkeletonCardRow";
 import { useLiveAccounts } from "@/hooks/useLiveAccounts";
 import { useUser } from "@/hooks/useUser";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Bell, Search, Menu, LayoutGrid, List, LogOut } from "lucide-react";
+import { LayoutDashboard, Bell, Search, Menu, LayoutGrid, List, LogOut, ChevronDown, ChevronUp } from "lucide-react";
 
 export default function Home() {
   const { accounts, isLoading } = useLiveAccounts();
   const user = useUser();
   const { logout } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "row">("grid");
+  const [showSummary, setShowSummary] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
@@ -81,11 +82,34 @@ export default function Home() {
           </div>
         </div>
 
-        {isLoading ? <SkeletonSummary /> : <SummaryRibbon accounts={accounts} />}
+        {showSummary && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            {isLoading ? <SkeletonSummary /> : <SummaryRibbon accounts={accounts} />}
+          </div>
+        )}
 
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold tracking-tight">Active Accounts</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold tracking-tight">Active Accounts</h2>
+              <button
+                onClick={() => setShowSummary(!showSummary)}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all"
+                title={showSummary ? "Hide Summary" : "Show Summary"}
+              >
+                {showSummary ? (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    Hide Overview
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Show Overview
+                  </>
+                )}
+              </button>
+            </div>
             <div className="flex gap-2">
               <div className="flex items-center gap-1 bg-card border border-white/10 rounded-lg p-1">
                 <button

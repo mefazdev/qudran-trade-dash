@@ -131,16 +131,60 @@ export async function getMetaCopierPositions(accountId: string) {
         const data = await response.json();
         const positionsRaw = Array.isArray(data) ? data : (data.positions || []);
 
-        return positionsRaw.map((pos: any) => ({
-            _id: pos.id,
-            symbol: pos.symbol,
-            type: typeof pos.dealType === 'number' ? pos.dealType : (pos.dealType === 'Buy' ? 0 : 1), // heuristics
-            volume: pos.volume,
-            openPrice: pos.openPrice,
-            currentPrice: pos.openPrice, // API doesn't seem to provide current price in list
-            profit: pos.profit,
-            ticket: parseInt(pos.id) || 0
-        }));
+        // Log ALL position data to see the structure and ALL available fields
+        if (positionsRaw.length > 0) {
+            console.log("=== ALL POSITION DATA ===");
+            positionsRaw.forEach((pos: any, index: number) => {
+                console.log(`Position ${index + 1}:`, JSON.stringify(pos, null, 2));
+            });
+            console.log("=== END POSITION DATA ===");
+        }
+
+        return positionsRaw.map((pos: any) => {
+            // Map dealType to numeric value (0=Buy, 1=Sell)
+            let typeValue = 1; // Default to sell
+
+            // Check all possible fields that might contain the position type
+            const possibleTypeFields = ['dealType', 'type', 'side', 'positionType', 'orderType', 'tradeType'];
+
+            console.log(`Position ${pos.symbol} - Checking all fields:`, {
+                dealType: pos.dealType,
+                type: pos.type,
+                side: pos.side,
+                positionType: pos.positionType,
+                orderType: pos.orderType,
+                tradeType: pos.tradeType
+            });
+
+            if (typeof pos.dealType === 'number') {
+                typeValue = pos.dealType;
+            } else if (typeof pos.dealType === 'string') {
+                // Handle string values like "Buy", "BUY", "Sell", "SELL"
+                const dealTypeStr = pos.dealType.toLowerCase();
+                typeValue = dealTypeStr === 'buy' ? 0 : 1;
+            }
+
+            // Also check pos.type as a fallback
+            if (pos.type !== undefined) {
+                if (typeof pos.type === 'number') {
+                    typeValue = pos.type;
+                } else if (typeof pos.type === 'string') {
+                    const typeStr = pos.type.toLowerCase();
+                    typeValue = typeStr === 'buy' ? 0 : 1;
+                }
+            }
+
+            return {
+                _id: pos.id,
+                symbol: pos.symbol,
+                type: typeValue,
+                volume: pos.volume,
+                openPrice: pos.openPrice,
+                currentPrice: pos.currentPrice || pos.openPrice, // Use currentPrice if available
+                profit: pos.profit,
+                ticket: parseInt(pos.id) || 0
+            };
+        });
     } catch (error) {
         console.error(`Error fetching positions:`, error);
         return [];
