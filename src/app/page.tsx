@@ -1,63 +1,141 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import { SummaryRibbon } from "@/components/dashboard/SummaryRibbon";
+import { SkeletonSummary } from "@/components/dashboard/SkeletonSummary";
+import { SkeletonCard } from "@/components/dashboard/SkeletonCard";
+import { SkeletonCardRow } from "@/components/dashboard/SkeletonCardRow";
+import { useLiveAccounts } from "@/hooks/useLiveAccounts";
+import { useUser } from "@/hooks/useUser";
+import { useAuth } from "@/contexts/AuthContext";
+import { LayoutDashboard, Bell, Search, Menu, LayoutGrid, List, LogOut } from "lucide-react";
 
 export default function Home() {
+  const { accounts, isLoading } = useLiveAccounts();
+  const user = useUser();
+  const { logout } = useAuth();
+  const [viewMode, setViewMode] = useState<"grid" | "row">("grid");
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
+      {/* Top Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-background/80 backdrop-blur-xl h-16 flex items-center justify-between px-6 lg:px-12 transition-all duration-300">
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="h-9 w-9 bg-gradient-to-br from-primary to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+            <LayoutDashboard className="h-5 w-5" />
+          </div>
+            </div>
+
+        <div className="flex items-center gap-3 md:gap-6">
+          <div className="hidden md:flex items-center px-3 py-1.5 bg-white/5 rounded-full border border-white/5 focus-within:border-white/20 focus-within:bg-white/10 transition-all">
+            <Search className="h-4 w-4 text-muted-foreground mr-2" />
+            <input type="text" placeholder="Search accounts..." className="bg-transparent border-none outline-none text-sm w-32 focus:w-48 transition-all placeholder:text-muted-foreground/50" />
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* <button className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary ring-2 ring-background animate-pulse" />
+            </button> */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10">
+              <span className="text-sm text-foreground font-medium">{user.name}</span>
+            </div>
+            {/* <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-zinc-700 to-zinc-900 flex items-center justify-center border border-white/10 cursor-pointer hover:border-primary/50 transition-colors" title={user.name}>
+              <span className="text-xs font-bold text-white">{user.initials}</span>
+            </div> */}
+            <button
+              onClick={logout}
+              className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-all"
+              title="Logout"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <LogOut className="h-5 w-5" />
+            </button>
+            <button className="md:hidden p-2 text-muted-foreground">
+              <Menu className="h-6 w-6" />
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Main Content */}
+      <main className="pt-24 px-6 lg:px-12 pb-12 max-w-[1920px] mx-auto">
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight mb-2 text-foreground">Dashboard Overview</h1>
+            <p className="text-muted-foreground max-w-xl">
+              Real-time monitoring of <span className="text-foreground font-medium">{isLoading ? '...' : accounts.length} active trading accounts</span>.
+              Replica latency is <span className="text-primary">optimal (12ms)</span>.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse relative">
+                <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></span>
+              </span>
+              Live Feed Active
+            </div>
+            {/* <button className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+              + Connect Account
+            </button> */}
+          </div>
+        </div>
+
+        {isLoading ? <SkeletonSummary /> : <SummaryRibbon accounts={accounts} />}
+
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold tracking-tight">Active Accounts</h2>
+            <div className="flex gap-2">
+              <div className="flex items-center gap-1 bg-card border border-white/10 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 rounded transition-all ${
+                    viewMode === "grid"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("row")}
+                  className={`p-1.5 rounded transition-all ${
+                    viewMode === "row"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }`}
+                  title="Row View"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+              {/* <select className="bg-card border border-white/10 rounded-lg text-xs px-3 py-1.5 text-muted-foreground outline-none focus:border-white/20">
+                <option>Sort by Equity</option>
+                <option>Sort by Name</option>
+                <option>Sort by P/L</option>
+              </select> */}
+            </div>
+          </div>
+
+          {isLoading ? (
+            viewMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <SkeletonCardRow key={i} />
+                ))}
+              </div>
+            )
+          ) : (
+            <DashboardGrid accounts={accounts} viewMode={viewMode} />
+          )}
         </div>
       </main>
     </div>
