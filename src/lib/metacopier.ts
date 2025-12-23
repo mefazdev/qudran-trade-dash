@@ -131,47 +131,23 @@ export async function getMetaCopierPositions(accountId: string) {
         const data = await response.json();
         const positionsRaw = Array.isArray(data) ? data : (data.positions || []);
 
-        // Log ALL position data to see the structure and ALL available fields
-        if (positionsRaw.length > 0) {
-            console.log("=== ALL POSITION DATA ===");
-            positionsRaw.forEach((pos: any, index: number) => {
-                console.log(`Position ${index + 1}:`, JSON.stringify(pos, null, 2));
-            });
-            console.log("=== END POSITION DATA ===");
-        }
-
         return positionsRaw.map((pos: any) => {
             // Map dealType to numeric value (0=Buy, 1=Sell)
             let typeValue = 1; // Default to sell
 
-            // Check all possible fields that might contain the position type
-            const possibleTypeFields = ['dealType', 'type', 'side', 'positionType', 'orderType', 'tradeType'];
-
-            console.log(`Position ${pos.symbol} - Checking all fields:`, {
-                dealType: pos.dealType,
-                type: pos.type,
-                side: pos.side,
-                positionType: pos.positionType,
-                orderType: pos.orderType,
-                tradeType: pos.tradeType
-            });
-
-            if (typeof pos.dealType === 'number') {
-                typeValue = pos.dealType;
-            } else if (typeof pos.dealType === 'string') {
-                // Handle string values like "Buy", "BUY", "Sell", "SELL"
+            // MetaCopier API returns dealType as "DealBuy" or "DealSell"
+            if (typeof pos.dealType === 'string') {
                 const dealTypeStr = pos.dealType.toLowerCase();
-                typeValue = dealTypeStr === 'buy' ? 0 : 1;
+                // Check if it contains "buy" anywhere in the string
+                typeValue = dealTypeStr.includes('buy') ? 0 : 1;
+            } else if (typeof pos.dealType === 'number') {
+                typeValue = pos.dealType;
             }
 
-            // Also check pos.type as a fallback
-            if (pos.type !== undefined) {
-                if (typeof pos.type === 'number') {
-                    typeValue = pos.type;
-                } else if (typeof pos.type === 'string') {
-                    const typeStr = pos.type.toLowerCase();
-                    typeValue = typeStr === 'buy' ? 0 : 1;
-                }
+            // Fallback to orderType field if dealType is not available
+            if (pos.dealType === undefined && pos.orderType) {
+                const orderTypeStr = pos.orderType.toLowerCase();
+                typeValue = orderTypeStr.includes('buy') ? 0 : 1;
             }
 
             return {

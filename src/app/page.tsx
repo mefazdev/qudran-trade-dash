@@ -15,7 +15,7 @@ export default function Home() {
   const { accounts, isLoading } = useLiveAccounts();
   const user = useUser();
   const { logout } = useAuth();
-  const [viewMode, setViewMode] = useState<"grid" | "row">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "row">("row");
   const [showSummary, setShowSummary] = useState(false);
 
   return (
