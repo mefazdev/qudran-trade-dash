@@ -11,16 +11,37 @@ import {
     disconnectSocket
 } from "@/lib/metacopierSocket";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
 export function useLiveAccounts() {
-    const { data, error, isLoading, isValidating, mutate } = useSWR<TradingAccount[]>("/api/accounts", fetcher, {
-        refreshInterval: 10000, // Increased to 10s since we have WebSocket for real-time updates
-        revalidateOnFocus: false,
-    });
-
+    const [userHeaders, setUserHeaders] = useState<HeadersInit>({});
     const [liveAccounts, setLiveAccounts] = useState<TradingAccount[]>([]);
     const socketConnected = useRef(false);
+
+    // Get user headers from localStorage
+    useEffect(() => {
+        const email = localStorage.getItem("userEmail");
+        const name = localStorage.getItem("userName");
+
+        if (email) {
+            setUserHeaders({
+                "x-user-email": email,
+                "x-user-name": name || "User",
+            });
+        }
+    }, []);
+
+    const fetcher = (url: string) =>
+        fetch(url, {
+            headers: userHeaders,
+        }).then((res) => res.json());
+
+    const { data, error, isLoading, isValidating, mutate } = useSWR<TradingAccount[]>(
+        Object.keys(userHeaders).length > 0 ? "/api/accounts" : null,
+        fetcher,
+        {
+            refreshInterval: 10000, // Increased to 10s since we have WebSocket for real-time updates
+            revalidateOnFocus: false,
+        }
+    );
 
     // Update liveAccounts whenever REST API data changes
     useEffect(() => {
@@ -36,11 +57,11 @@ export function useLiveAccounts() {
             return;
         }
 
-        // Get API key from environment (client-side)
-        const apiKey = process.env.NEXT_PUBLIC_METACOPIER_API_KEY;
+        // Get API key from localStorage (user-specific)
+        const apiKey = localStorage.getItem("userApiKey");
 
         if (!apiKey) {
-            console.warn('[useLiveAccounts] No NEXT_PUBLIC_METACOPIER_API_KEY found. WebSocket disabled.');
+            console.warn('[useLiveAccounts] No user API key found in localStorage. WebSocket disabled.');
             return;
         }
 

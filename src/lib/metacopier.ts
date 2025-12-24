@@ -62,8 +62,8 @@ function getApiKey(): string | undefined {
     return undefined;
 }
 
-export async function getMetaCopierAccounts() {
-    const apiKey = getApiKey();
+export async function getMetaCopierAccounts(userApiKey?: string) {
+    const apiKey = userApiKey || getApiKey();
 
     if (!apiKey) {
         console.error("METACOPIER_API_KEY is not defined (checked env and .env.local)");
@@ -112,8 +112,8 @@ export async function getMetaCopierAccounts() {
     }
 }
 
-export async function getMetaCopierPositions(accountId: string) {
-    const apiKey = getApiKey();
+export async function getMetaCopierPositions(accountId: string, userApiKey?: string) {
+    const apiKey = userApiKey || getApiKey();
 
     if (!apiKey) return [];
 

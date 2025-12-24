@@ -1,17 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getMetaCopierAccounts, getMetaCopierPositions, MetaCopierAccount, MetaCopierPosition } from "@/lib/metacopier";
 import { TradingAccount, AccountStatus } from "@/lib/mockData";
+import { getUserByEmail } from "@/lib/users";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const rawAccounts: MetaCopierAccount[] = await getMetaCopierAccounts();
+        // Get user's API key from headers
+        const userEmail = request.headers.get("x-user-email");
+
+        let apiKey: string | undefined;
+
+        if (userEmail) {
+            const user = getUserByEmail(userEmail);
+            if (user) {
+                apiKey = user.apiKey;
+            }
+        }
+
+        const rawAccounts: MetaCopierAccount[] = await getMetaCopierAccounts(apiKey);
 
         // Fetch positions for all connected accounts in parallel
         const accountsWithPositions = await Promise.all(
             rawAccounts.map(async (acc) => {
                 let positions: MetaCopierPosition[] = [];
                 if (acc.connectionStatus === "CONNECTED") {
-                    positions = await getMetaCopierPositions(acc._id);
+                    positions = await getMetaCopierPositions(acc._id, apiKey);
                 }
 
                 return mapToTradingAccount(acc, positions);

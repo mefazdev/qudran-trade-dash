@@ -16,29 +16,43 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    // Hardcoded credentials
-    const VALID_EMAIL = "shuaibrec@gmail.com";
-    const VALID_PASSWORD = "Shuhaib@123";
-
     // Simulate a slight delay for better UX
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    if (email === VALID_EMAIL && password === VALID_PASSWORD) {
-      // Store authentication in localStorage
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userEmail", email);
-      localStorage.setItem("userName", "Shuhaib");
+    // Validate user credentials via API
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // Force a small delay to ensure localStorage is written
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      const data = await response.json();
 
-      // Redirect to dashboard using replace to prevent back button issues
-      router.replace("/");
+      if (response.ok && data.success) {
+        // Store authentication in localStorage
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userEmail", data.user.email);
+        localStorage.setItem("userName", data.user.name);
+        localStorage.setItem("userApiKey", data.user.apiKey);
 
-      // Force reload to ensure auth state is updated
-      window.location.href = "/";
-    } else {
-      setError("Invalid email or password");
+        // Force a small delay to ensure localStorage is written
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Redirect to dashboard using replace to prevent back button issues
+        router.replace("/");
+
+        // Force reload to ensure auth state is updated
+        window.location.href = "/";
+      } else {
+        setError(data.error || "Invalid email or password");
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("An error occurred. Please try again.");
       setIsLoading(false);
     }
   };
