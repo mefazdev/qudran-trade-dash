@@ -157,8 +157,8 @@ export function useLiveAccounts() {
                     if (accountIndex !== -1) {
                         const account = updatedAccounts[accountIndex];
 
-                        // Extract values from nested accountInformation or top-level
-                        const info = payload.accountInformation || payload;
+                        // Extract values from nested accountInformation, info (new format), or top-level
+                        const info = payload.accountInformation || payload.info || payload;
 
                         updatedAccounts[accountIndex] = {
                             ...account,

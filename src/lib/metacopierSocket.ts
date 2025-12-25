@@ -6,6 +6,8 @@ import { Client, StompSubscription } from '@stomp/stompjs';
 export interface UpdateAccountInformationDTO {
     id?: string; // Account ID
     accountId?: string; // Alternative field name
+
+    // Top level fields (sometimes sent)
     balance?: number;
     equity?: number;
     margin?: number;
@@ -15,6 +17,8 @@ export interface UpdateAccountInformationDTO {
     unrealizedProfit?: number;
     leverage?: number;
     connected?: boolean;
+
+    // Nested object (standard MetaCopier format)
     accountInformation?: {
         balance?: number;
         equity?: number;
@@ -24,6 +28,31 @@ export interface UpdateAccountInformationDTO {
         marginLevel?: number;
         unrealizedProfit?: number;
         connected?: boolean;
+    };
+
+    // Alternative nested object name (seen in logs)
+    info?: {
+        balance?: number;
+        equity?: number;
+        credit?: number;
+        unrealizedProfit?: number;
+        leverage?: number;
+        profitThisMonth?: number;
+        profitThisWeek?: number;
+        profitToday?: number;
+        currency?: string;
+        connected?: boolean;
+        fallbackMode?: boolean;
+        isNative?: boolean;
+        drawdown?: number;
+        usedMargin?: number;
+        margin?: number; // Optional alias for usedMargin
+        marginLevel?: number;
+        freeMargin?: number;
+        avgDrawdown?: number;
+        maxDrawdown?: number;
+        hftMode?: boolean;
+        isSource?: boolean;
     };
 }
 

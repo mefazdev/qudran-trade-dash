@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { TradingAccount } from "@/lib/mockData";
 import { cn, formatNumber } from "@/lib/utils";
 import {
@@ -6,7 +9,9 @@ import {
     Wifi,
     WifiOff,
     Activity,
-    Layers
+    Layers,
+    ChevronDown,
+    ChevronUp
 } from "lucide-react";
 
 interface AccountCardRowProps {
@@ -16,6 +21,7 @@ interface AccountCardRowProps {
 export function AccountCardRow({ account }: AccountCardRowProps) {
     const isConnected = account.status === "Connected";
     const isProfit = account.openPnL >= 0;
+    const [showPositions, setShowPositions] = useState(true);
 
     return (
         <div className="relative group overflow-hidden rounded-xl border border-white/5 bg-card/50 backdrop-blur-md transition-all duration-300 hover:border-white/10 hover:shadow-lg hover:shadow-primary/5">
@@ -56,7 +62,7 @@ export function AccountCardRow({ account }: AccountCardRowProps) {
                         {/* Balance */}
                         <div className="bg-white/[0.02] p-4 rounded-lg border border-white/5">
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Balance</p>
-                            <div className="text-xl font-bold text-foreground font-mono">
+                            <div className="  font-bold text-foreground font-mono">
                                 {formatNumber(account.balance, 2)}
                             </div>
                         </div>
@@ -64,7 +70,7 @@ export function AccountCardRow({ account }: AccountCardRowProps) {
                         {/* Equity */}
                         <div className="bg-white/[0.02] p-4 rounded-lg border border-white/5">
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Equity</p>
-                            <div className="text-xl font-bold text-foreground font-mono">
+                            <div className=" font-bold text-foreground font-mono">
                                 {formatNumber(account.equity, 2)}
                             </div>
                         </div>
@@ -75,7 +81,7 @@ export function AccountCardRow({ account }: AccountCardRowProps) {
                                 <Layers className="h-3 w-3" /> Margin Level
                             </div>
                             <div className={cn(
-                                "text-xl font-mono font-bold",
+                                " font-mono font-bold",
                                 account.marginLevel < 100 ? "text-destructive" : "text-foreground"
                             )}>
                                 {account.marginLevel.toFixed(2)}%
@@ -87,7 +93,7 @@ export function AccountCardRow({ account }: AccountCardRowProps) {
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider mb-1">
                                 Free Margin
                             </div>
-                            <div className="text-xl font-mono font-bold text-foreground">
+                            <div className="  font-mono font-bold text-foreground">
                                 {formatNumber(account.freeMargin, 0)}
                             </div>
                         </div>
@@ -123,41 +129,64 @@ export function AccountCardRow({ account }: AccountCardRowProps) {
                 {account.positions && account.positions.length > 0 && (
                     <div className="w-80 lg:w-96 bg-white/[0.02] border-l border-white/5 flex flex-col">
                         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
-                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">Open Positions</h4>
-                            <span className="text-xs font-mono text-muted-foreground">{account.positions.length} {account.positions.length === 1 ? 'position' : 'positions'}</span>
+                            <div className="flex items-center gap-2">
+                                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">Open Positions</h4>
+                                <span className="text-xs font-mono text-muted-foreground">
+                                    {account.positions.length} {account.positions.length === 1 ? 'position' : 'positions'}
+                                </span>
+                            </div>
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log("Toggle clicked, new state:", !showPositions);
+                                    setShowPositions(prev => !prev);
+                                }}
+                                className="relative z-10 p-2 rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                                title={showPositions ? "Hide positions" : "Show positions"}
+                                aria-label={showPositions ? "Hide positions" : "Show positions"}
+                            >
+                                {showPositions ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                )}
+                            </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            {account.positions.map((pos) => (
-                                <div key={pos.id} className="px-5 py-3 border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors group/pos">
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="font-semibold text-sm text-foreground">{pos.symbol}</span>
-                                            <span className={cn(
-                                                "text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm",
-                                                pos.type === 'buy' ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"
-                                            )}>{pos.type}</span>
+                        {showPositions && (
+                            <div className="flex-1 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
+                                {account.positions.map((pos) => (
+                                    <div key={pos.id} className="px-5 py-3 border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition-colors group/pos">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="font-semibold text-sm text-foreground">{pos.symbol}</span>
+                                                <span className={cn(
+                                                    "text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm",
+                                                    pos.type === 'buy' ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"
+                                                )}>{pos.type}</span>
+                                            </div>
+                                            <div className={cn(
+                                                "font-mono font-bold text-sm",
+                                                pos.pnl >= 0 ? "text-primary" : "text-destructive"
+                                            )}>
+                                                {pos.pnl >= 0 ? "+" : ""}{pos.pnl.toFixed(2)}
+                                            </div>
                                         </div>
-                                        <div className={cn(
-                                            "font-mono font-bold text-sm",
-                                            pos.pnl >= 0 ? "text-primary" : "text-destructive"
-                                        )}>
-                                            {pos.pnl >= 0 ? "+" : ""}{pos.pnl.toFixed(2)}
+                                        <div className="flex items-center justify-between text-[11px]">
+                                            <div className="text-muted-foreground font-mono flex items-center gap-1">
+                                                <span>{pos.openPrice.toFixed(5)}</span>
+                                                <span className="text-zinc-600">→</span>
+                                                <span className={cn(
+                                                    "transition-colors font-medium",
+                                                    pos.pnl >= 0 ? "text-primary/80" : "text-destructive/80"
+                                                )}>{pos.currentPrice.toFixed(5)}</span>
+                                            </div>
+                                            <span className="text-muted-foreground font-mono">{pos.volume} lots</span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between text-[11px]">
-                                        <div className="text-muted-foreground font-mono flex items-center gap-1">
-                                            <span>{pos.openPrice.toFixed(5)}</span>
-                                            <span className="text-zinc-600">→</span>
-                                            <span className={cn(
-                                                "transition-colors font-medium",
-                                                pos.pnl >= 0 ? "text-primary/80" : "text-destructive/80"
-                                            )}>{pos.currentPrice.toFixed(5)}</span>
-                                        </div>
-                                        <span className="text-muted-foreground font-mono">{pos.volume} lots</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

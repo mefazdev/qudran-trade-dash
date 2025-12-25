@@ -9,12 +9,14 @@ import { SkeletonCardRow } from "@/components/dashboard/SkeletonCardRow";
 import { useLiveAccounts } from "@/hooks/useLiveAccounts";
 import { useUser } from "@/hooks/useUser";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Bell, Search, Menu, LayoutGrid, List, LogOut, ChevronDown, ChevronUp } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { LayoutDashboard, Bell, Search, Menu, LayoutGrid, List, LogOut, ChevronDown, ChevronUp, Sun, Moon } from "lucide-react";
 
 export default function Home() {
   const { accounts, isLoading, isSocketConnected } = useLiveAccounts();
   const user = useUser();
   const { logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [viewMode, setViewMode] = useState<"grid" | "row">("row");
   const [showSummary, setShowSummary] = useState(false);
 
@@ -46,6 +48,23 @@ export default function Home() {
               <span className="text-xs font-bold text-white">{user.initials}</span>
             </div> */}
             <button
+              onClick={toggleTheme}
+              className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all relative overflow-hidden"
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            >
+              <div className="relative w-5 h-5">
+                <Sun className={`h-5 w-5 absolute inset-0 transition-all duration-300 ${theme === "light"
+                  ? "rotate-0 scale-100 opacity-100"
+                  : "rotate-90 scale-0 opacity-0"
+                  }`} />
+                <Moon className={`h-5 w-5 absolute inset-0 transition-all duration-300 ${theme === "dark"
+                  ? "rotate-0 scale-100 opacity-100"
+                  : "-rotate-90 scale-0 opacity-0"
+                  }`} />
+              </div>
+            </button>
+            <button
               onClick={logout}
               className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-all"
               title="Logout"
@@ -60,13 +79,13 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="pt-24 px-6 lg:px-12 pb-12 max-w-[1920px] mx-auto">
+      <main className="pt-20 px-6 lg:px-12 pb-12 max-w-[1920px] mx-auto">
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2 text-foreground">Dashboard Overview</h1>
+            <h1 className="text-2xl font-bold tracking-tight  text-foreground">Dashboard Overview</h1>
             <p className="text-muted-foreground max-w-xl">
-              Real-time monitoring of <span className="text-foreground font-medium">{isLoading ? '...' : accounts.length} active trading accounts</span>.
-              Replica latency is <span className="text-primary">optimal (12ms)</span>.
+              Real-time monitoring of <span className="text-foreground ">{isLoading ? '...' : accounts.length} active trading accounts</span>.
+
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -93,7 +112,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="mt-8">
+        <div className="mt-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold tracking-tight">Active Accounts</h2>
