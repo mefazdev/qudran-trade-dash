@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LayoutDashboard, Bell, Search, Menu, LayoutGrid, List, LogOut, ChevronDown, ChevronUp } from "lucide-react";
 
 export default function Home() {
-  const { accounts, isLoading } = useLiveAccounts();
+  const { accounts, isLoading, isSocketConnected } = useLiveAccounts();
   const user = useUser();
   const { logout } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "row">("row");
@@ -26,7 +26,7 @@ export default function Home() {
           <div className="h-9 w-9 bg-gradient-to-br from-primary to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
             <LayoutDashboard className="h-5 w-5" />
           </div>
-            </div>
+        </div>
 
         <div className="flex items-center gap-3 md:gap-6">
           <div className="hidden md:flex items-center px-3 py-1.5 bg-white/5 rounded-full border border-white/5 focus-within:border-white/20 focus-within:bg-white/10 transition-all">
@@ -70,11 +70,16 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse relative">
-                <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></span>
+            <div className={`px-3 py-1 rounded-full border text-xs font-medium flex items-center gap-2 transition-colors duration-300 ${isSocketConnected
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+              : "bg-yellow-500/10 border-yellow-500/20 text-yellow-500"
+              }`}>
+              <span className={`h-1.5 w-1.5 rounded-full relative ${isSocketConnected ? "bg-emerald-500" : "bg-yellow-500"}`}>
+                {isSocketConnected && (
+                  <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75"></span>
+                )}
               </span>
-              Live Feed Active
+              {isSocketConnected ? "Live Feed Active" : "Connecting..."}
             </div>
             {/* <button className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
               + Connect Account
@@ -114,22 +119,20 @@ export default function Home() {
               <div className="flex items-center gap-1 bg-card border border-white/10 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-1.5 rounded transition-all ${
-                    viewMode === "grid"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                  }`}
+                  className={`p-1.5 rounded transition-all ${viewMode === "grid"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
                   title="Grid View"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("row")}
-                  className={`p-1.5 rounded transition-all ${
-                    viewMode === "row"
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                  }`}
+                  className={`p-1.5 rounded transition-all ${viewMode === "row"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
                   title="Row View"
                 >
                   <List className="h-4 w-4" />

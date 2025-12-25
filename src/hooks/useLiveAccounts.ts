@@ -8,12 +8,14 @@ import {
     MessageWrapper,
     UpdateAccountInformationDTO,
     UpdateOpenPositionsDTO,
+    UpdateHistoryDTO,
     disconnectSocket
 } from "@/lib/metacopierSocket";
 
 export function useLiveAccounts() {
     const [userHeaders, setUserHeaders] = useState<HeadersInit>({});
     const [liveAccounts, setLiveAccounts] = useState<TradingAccount[]>([]);
+    const [isConnected, setIsConnected] = useState(false);
     const socketConnected = useRef(false);
 
     // Get user headers from localStorage
@@ -69,89 +71,162 @@ export function useLiveAccounts() {
             return; // Already connected
         }
 
+        let unsubscribe: (() => void) | null = null;
+        let isMounted = true;
+
         const socketClient = getSocketClient(apiKey);
 
         // Connect to WebSocket
         socketClient.connect().then(() => {
+            if (!isMounted) {
+                console.log('[useLiveAccounts] Component unmounted during connection, skipping subscription');
+                return;
+            }
+
             console.log('[useLiveAccounts] WebSocket connected successfully');
             socketConnected.current = true;
+            setIsConnected(true);
 
             // Subscribe to updates
-            const unsubscribe = socketClient.onUpdate((message: MessageWrapper) => {
-                handleSocketUpdate(message);
+            unsubscribe = socketClient.onUpdate((message: MessageWrapper) => {
+                if (isMounted) {
+                    handleSocketUpdate(message);
+                }
             });
 
-            // Cleanup on unmount
-            return () => {
-                unsubscribe();
-            };
+            // Subscribe to all account IDs to start receiving updates
+            const accountIds = data.map(acc => acc.id);
+            if (accountIds.length > 0) {
+                console.log('[useLiveAccounts] Subscribing to accounts:', accountIds);
+                socketClient.subscribeToAccounts(accountIds);
+            }
         }).catch((error) => {
             console.error('[useLiveAccounts] WebSocket connection failed:', error);
             console.log('[useLiveAccounts] Falling back to REST API polling only');
+            socketConnected.current = false;
+            setIsConnected(false);
         });
 
         // Cleanup on unmount
         return () => {
+            isMounted = false;
+            if (unsubscribe) {
+                unsubscribe();
+            }
             if (socketConnected.current) {
                 disconnectSocket();
                 socketConnected.current = false;
+                setIsConnected(false);
             }
         };
     }, [data]);
 
     const handleSocketUpdate = (message: MessageWrapper) => {
+        console.log('[useLiveAccounts] Processing message:', JSON.stringify(message, null, 2));
+
+        // Handle history updates outside setState to avoid React warning
+        if (message.type === 'UpdateHistoryDTO') {
+            const payload = (message.data || message.payload) as UpdateHistoryDTO;
+            console.log('[useLiveAccounts] Received history update for account:', payload.accountId || payload.id);
+            console.log('[useLiveAccounts] History items:', payload.history?.length || 0);
+            console.log('[useLiveAccounts] Trade closed - requesting account refresh');
+
+            // Refresh account data from API since balance changed
+            mutate();
+            return;
+        }
+
         setLiveAccounts((prevAccounts) => {
             const updatedAccounts = [...prevAccounts];
 
             switch (message.type) {
                 case 'UpdateAccountInformationDTO': {
-                    const payload = message.payload as UpdateAccountInformationDTO;
-                    const accountIndex = updatedAccounts.findIndex(acc => acc.id === payload.accountId);
+                    // Support both 'data' and 'payload' fields
+                    const payload = (message.data || message.payload) as UpdateAccountInformationDTO;
+                    console.log('[useLiveAccounts] Account info payload:', payload);
+
+                    // Support both 'id' and 'accountId' field names
+                    const accountId = payload.id || payload.accountId;
+                    if (!accountId) {
+                        console.warn('[useLiveAccounts] No account ID found in payload:', payload);
+                        break;
+                    }
+
+                    const accountIndex = updatedAccounts.findIndex(acc => acc.id === accountId);
 
                     if (accountIndex !== -1) {
                         const account = updatedAccounts[accountIndex];
+
+                        // Extract values from nested accountInformation or top-level
+                        const info = payload.accountInformation || payload;
+
                         updatedAccounts[accountIndex] = {
                             ...account,
-                            balance: payload.balance ?? account.balance,
-                            equity: payload.equity ?? account.equity,
-                            margin: payload.margin ?? account.margin,
-                            freeMargin: payload.freeMargin ?? account.freeMargin,
-                            marginLevel: payload.marginLevel ?? account.marginLevel,
-                            openPnL: payload.unrealizedProfit ?? account.openPnL,
-                            status: payload.connected === false ? 'Disconnected' : 'Connected',
+                            balance: info.balance ?? account.balance,
+                            equity: info.equity ?? account.equity,
+                            margin: info.usedMargin ?? info.margin ?? account.margin,
+                            freeMargin: info.freeMargin ?? account.freeMargin,
+                            marginLevel: info.marginLevel ?? account.marginLevel,
+                            openPnL: info.unrealizedProfit ?? account.openPnL,
+                            status: info.connected === false ? 'Disconnected' : 'Connected',
                         };
+                        console.log('[useLiveAccounts] Updated account:', updatedAccounts[accountIndex]);
+                    } else {
+                        console.warn('[useLiveAccounts] Account not found:', accountId);
                     }
                     break;
                 }
 
                 case 'UpdateOpenPositionsDTO': {
-                    const payload = message.payload as UpdateOpenPositionsDTO;
-                    const accountIndex = updatedAccounts.findIndex(acc => acc.id === payload.accountId);
+                    // Support both 'data' and 'payload' fields
+                    const payload = (message.data || message.payload) as any;
+                    console.log('[useLiveAccounts] Positions payload:', payload);
+                    console.log('[useLiveAccounts] Positions payload keys:', Object.keys(payload));
+
+                    // Support both 'id' and 'accountId' field names
+                    const accountId = payload.id || payload.accountId;
+                    if (!accountId) {
+                        console.warn('[useLiveAccounts] No account ID found in positions payload:', payload);
+                        break;
+                    }
+
+                    // Check if positions array exists - may be under different field names
+                    const positionsArray = payload.positions || payload.openPositions || payload.items || [];
+                    if (!Array.isArray(positionsArray)) {
+                        console.warn('[useLiveAccounts] No positions array found in payload. Keys:', Object.keys(payload));
+                        break;
+                    }
+
+                    console.log('[useLiveAccounts] Found', positionsArray.length, 'positions');
+
+                    const accountIndex = updatedAccounts.findIndex(acc => acc.id === accountId);
 
                     if (accountIndex !== -1) {
                         const account = updatedAccounts[accountIndex];
-                        const positions: Position[] = payload.positions.map(pos => ({
-                            id: pos.id,
-                            symbol: pos.symbol,
-                            type: pos.type.toLowerCase().includes('buy') ? 'buy' : 'sell',
-                            volume: pos.volume,
-                            openPrice: pos.openPrice,
-                            currentPrice: pos.currentPrice,
-                            pnl: pos.profit,
-                        }));
+                        const positions: Position[] = positionsArray.map((pos: any) => {
+                            // Handle different type field formats
+                            const typeStr = (pos.type || pos.dealType || pos.orderType || '').toLowerCase();
+                            const isBuy = typeStr.includes('buy');
+
+                            return {
+                                id: pos.id || pos._id || '',
+                                symbol: pos.symbol || '',
+                                type: isBuy ? 'buy' as const : 'sell' as const,
+                                volume: pos.volume || 0,
+                                openPrice: pos.openPrice || 0,
+                                currentPrice: pos.currentPrice || pos.openPrice || 0,
+                                pnl: pos.profit || pos.netProfit || 0,
+                            };
+                        });
 
                         updatedAccounts[accountIndex] = {
                             ...account,
                             positions,
                         };
+                        console.log('[useLiveAccounts] Updated positions for account:', accountId, positions);
+                    } else {
+                        console.warn('[useLiveAccounts] Account not found for positions update:', accountId);
                     }
-                    break;
-                }
-
-                case 'UpdateHistoryDTO': {
-                    // History updates don't need to change account state for now
-                    // Could be used for calculating daily P&L if needed
-                    console.log('[useLiveAccounts] Received history update');
                     break;
                 }
 
@@ -169,5 +244,6 @@ export function useLiveAccounts() {
         isLoading: isLoading && !data,
         isError: !!error,
         isValidating,
+        isSocketConnected: isConnected
     };
 }
