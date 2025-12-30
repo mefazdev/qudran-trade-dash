@@ -31,7 +31,7 @@ export function AccountCard({ account }: AccountCardProps) {
             )} />
 
             {/* Header */}
-            <div className="relative flex items-center justify-between p-5 border-b border-white/5">
+            <div className="relative flex items-center justify-between p-3 border-b border-white/5">
                 <div className="flex items-center gap-3">
                     <div className={cn(
                         "flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10",
@@ -39,20 +39,13 @@ export function AccountCard({ account }: AccountCardProps) {
                         <Activity className={cn("h-5 w-5", isConnected ? "text-primary" : "text-muted-foreground")} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-foreground tracking-tight">{account.name}</h3>
+                        <h3 className="font-semibold text-sm text-foreground tracking-tight">{account.name}</h3>
                         <p className="text-xs text-muted-foreground font-medium">{account.accountNumber} • {account.broker}</p>
                     </div>
                 </div>
 
                 {/* Center - Position Count */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center">
-                    <span className="text-sm font-bold font-mono text-foreground leading-none mb-0.5">
-                        {account.positions?.length || 0}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider leading-none">
-                        O/P
-                    </span>
-                </div>
+
 
                 <div className={cn(
                     "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider ring-1 ring-inset",
@@ -66,26 +59,44 @@ export function AccountCard({ account }: AccountCardProps) {
             </div>
 
             {/* Key Metrics Grid */}
-            <div className="grid grid-cols-2 gap-px bg-white/5 ">
+            <div className="grid grid-cols-3 px-3  gap-px bg-white/5">
                 {/* Balance */}
-                <div className="bg-card/50 p-5 py-3 group/metric hover:bg-white/[0.02] transition-colors">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Balance</p>
-                    <div className=" font-bold text-foreground font-mono">
+                <div className="bg-card/50 p-3 flex flex-col justify-center hover:bg-white/5 transition-colors">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Balance</p>
+                    <div className="font-semibold text-sm text-foreground font-mono">
                         {formatNumber(account.balance, 2)}
                     </div>
                 </div>
 
                 {/* Equity */}
-                <div className="bg-card/50 p-5  py-3 group/metric hover:bg-white/[0.02] transition-colors">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Equity</p>
-                    <div className="  font-bold text-foreground font-mono">
+                <div className="bg-card/50 p-3 flex flex-col justify-center hover:bg-white/5 transition-colors">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Equity</p>
+                    <div className="font-semibold text-sm text-foreground font-mono">
                         {formatNumber(account.equity, 2)}
+                    </div>
+                </div>
+
+                {/* Margin Metrics (ML & FM) */}
+                <div className="bg-card/50 p-2 px-3 flex flex-col justify-center items-end hover:bg-white/5 transition-colors">
+                    <div className="grid grid-cols-[auto_auto] gap-x-2 gap-y-1 text-right">
+                        <span className="text-[10px] font-medium text-muted-foreground" title="Margin Level">ML</span>
+                        <span className={cn(
+                            "font-bold font-mono text-xs",
+                            account.marginLevel < 100 ? "text-destructive" : "text-foreground"
+                        )}>
+                            {account.marginLevel.toFixed(0)}%
+                        </span>
+
+                        <span className="text-[10px] font-medium text-muted-foreground" title="Free Margin">FM</span>
+                        <span className="font-bold font-mono text-xs text-foreground">
+                            {formatNumber(account.freeMargin, 0)}
+                        </span>
                     </div>
                 </div>
             </div>
 
             {/* PnL Highlight Section */}
-            <div className="p-5 border-t border-white/5 space-y-4">
+            <div className="p-3 border-t border-white/5 space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className={cn(
@@ -94,7 +105,8 @@ export function AccountCard({ account }: AccountCardProps) {
                         )}>
                             {isProfit ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                         </span>
-                        <span className="text-sm font-medium text-muted-foreground">Open P/L</span>
+                        <span className="text-sm font-medium text-muted-foreground">Open P/L <span className="text-white ml-1 text-lg">{account.positions?.length || 0}</span></span>
+
                     </div>
                     <div className={cn(
                         "text-lg font-bold font-mono tracking-tight",
@@ -104,29 +116,7 @@ export function AccountCard({ account }: AccountCardProps) {
                     </div>
                 </div>
 
-                {/* Secondary Metrics */}
-                <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
-                    <div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                            <Layers className="h-3 w-3" /> margin Level
-                        </div>
-                        <div className={cn(
-                            "font-mono font-medium",
-                            account.marginLevel < 100 ? "text-destructive" : "text-foreground"
-                        )}>
-                            {account.marginLevel.toFixed(2)}%
-                        </div>
-                    </div>
 
-                    <div className="text-right">
-                        <div className="flex items-center justify-end gap-1.5 text-xs text-muted-foreground mb-1">
-                            Free Margin
-                        </div>
-                        <div className="font-mono font-medium text-foreground">
-                            {formatNumber(account.freeMargin, 0)}
-                        </div>
-                    </div>
-                </div>
             </div>
 
             {/* Positions Section */}

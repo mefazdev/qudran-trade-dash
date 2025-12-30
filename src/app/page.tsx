@@ -80,10 +80,10 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="pt-20 px-6 lg:px-12 pb-12 max-w-[1920px] mx-auto">
-        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight  text-foreground">Dashboard Overview</h1>
-            <p className="text-muted-foreground max-w-xl">
+            <h1 className="text-xl font-bold tracking-tight  text-foreground">Dashboard Overview</h1>
+            <p className="text-muted-foreground max-w-xl text-sm">
               Real-time monitoring of <span className="text-foreground ">{isLoading ? '...' : accounts.length} active trading accounts</span>.
 
             </p>
@@ -112,10 +112,10 @@ export default function Home() {
           </div>
         )}
 
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-6">
+        <div  >
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold tracking-tight">Active Accounts</h2>
+              <h2 className="text-base font-semibold tracking-tight">Active Accounts</h2>
               <button
                 onClick={() => setShowSummary(!showSummary)}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all"
