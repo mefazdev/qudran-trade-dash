@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { TradingAccount, Position } from "@/lib/mockData";
 import {
@@ -17,6 +17,8 @@ export function useLiveAccounts() {
     const [liveAccounts, setLiveAccounts] = useState<TradingAccount[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const socketConnected = useRef(false);
+    const subscribedAccountIds = useRef<string[]>([]);
+    const mutateRef = useRef<(() => void) | null>(null);
 
     // Get user headers from localStorage
     useEffect(() => {
@@ -45,83 +47,54 @@ export function useLiveAccounts() {
         }
     );
 
-    // Update liveAccounts whenever REST API data changes
+    // Store mutate in ref for use in socket handler
+    useEffect(() => {
+        mutateRef.current = mutate;
+    }, [mutate]);
+
+    // Update liveAccounts whenever REST API data changes (merge with existing live data)
     useEffect(() => {
         if (data) {
-            setLiveAccounts(data);
-        }
-    }, [data]);
-
-    // WebSocket connection and updates
-    useEffect(() => {
-        // Only try to connect if we have initial data
-        if (!data || data.length === 0) {
-            return;
-        }
-
-        // Get API key from localStorage (user-specific)
-        const apiKey = localStorage.getItem("userApiKey");
-
-        if (!apiKey) {
-            console.warn('[useLiveAccounts] No user API key found in localStorage. WebSocket disabled.');
-            return;
-        }
-
-        if (socketConnected.current) {
-            return; // Already connected
-        }
-
-        let unsubscribe: (() => void) | null = null;
-        let isMounted = true;
-
-        const socketClient = getSocketClient(apiKey);
-
-        // Connect to WebSocket
-        socketClient.connect().then(() => {
-            if (!isMounted) {
-                console.log('[useLiveAccounts] Component unmounted during connection, skipping subscription');
-                return;
-            }
-
-            console.log('[useLiveAccounts] WebSocket connected successfully');
-            socketConnected.current = true;
-            setIsConnected(true);
-
-            // Subscribe to updates
-            unsubscribe = socketClient.onUpdate((message: MessageWrapper) => {
-                if (isMounted) {
-                    handleSocketUpdate(message);
+            setLiveAccounts(prevAccounts => {
+                // If we have no previous accounts, just use the new data
+                if (prevAccounts.length === 0) {
+                    return data;
                 }
+                // Merge: preserve live WebSocket updates for existing accounts
+                return data.map(newAcc => {
+                    const existingAcc = prevAccounts.find(prev => prev.id === newAcc.id);
+                    if (existingAcc) {
+                        // Keep the more recent live data if it exists
+                        return {
+                            ...newAcc,
+                            balance: existingAcc.balance ?? newAcc.balance,
+                            equity: existingAcc.equity ?? newAcc.equity,
+                            openPnL: existingAcc.openPnL ?? newAcc.openPnL,
+                            positions: existingAcc.positions ?? newAcc.positions,
+                        };
+                    }
+                    return newAcc;
+                });
             });
-
-            // Subscribe to all account IDs to start receiving updates
-            const accountIds = data.map(acc => acc.id);
-            if (accountIds.length > 0) {
-                console.log('[useLiveAccounts] Subscribing to accounts:', accountIds);
-                socketClient.subscribeToAccounts(accountIds);
-            }
-        }).catch((error) => {
-            console.error('[useLiveAccounts] WebSocket connection failed:', error);
-            console.log('[useLiveAccounts] Falling back to REST API polling only');
-            socketConnected.current = false;
-            setIsConnected(false);
-        });
-
-        // Cleanup on unmount
-        return () => {
-            isMounted = false;
-            if (unsubscribe) {
-                unsubscribe();
-            }
-            if (socketConnected.current) {
-                disconnectSocket();
-                socketConnected.current = false;
-                setIsConnected(false);
-            }
-        };
+        }
     }, [data]);
 
-    const handleSocketUpdate = (message: MessageWrapper) => {
+    // Memoize account IDs to prevent unnecessary re-subscriptions
+    const accountIds = useMemo(() => {
+        return data?.map(acc => acc.id) || [];
+    }, [data]);
+
+    // Get API key from localStorage after hydration
+    const [apiKey, setApiKey] = useState<string | null>(null);
+    useEffect(() => {
+        const key = localStorage.getItem("userApiKey");
+        if (key) {
+            setApiKey(key);
+        }
+    }, []);
+
+    // Handle socket updates - wrapped in useCallback for stable reference
+    const handleSocketUpdate = useCallback((message: MessageWrapper) => {
         console.log('[useLiveAccounts] Processing message:', JSON.stringify(message, null, 2));
 
         // Handle history updates outside setState to avoid React warning
@@ -132,7 +105,9 @@ export function useLiveAccounts() {
             console.log('[useLiveAccounts] Trade closed - requesting account refresh');
 
             // Refresh account data from API since balance changed
-            mutate();
+            if (mutateRef.current) {
+                mutateRef.current();
+            }
             return;
         }
 
@@ -236,7 +211,95 @@ export function useLiveAccounts() {
 
             return updatedAccounts;
         });
-    };
+    }, []);
+
+    // Store accountIds in a ref for access in connection callback without causing reconnection
+    const accountIdsRef = useRef<string[]>([]);
+    useEffect(() => {
+        accountIdsRef.current = accountIds;
+    }, [accountIds]);
+
+    // WebSocket connection - only depends on API key (stable)
+    useEffect(() => {
+        if (!apiKey) {
+            console.warn('[useLiveAccounts] No user API key found in localStorage. WebSocket disabled.');
+            return;
+        }
+
+        if (socketConnected.current) {
+            return; // Already connected
+        }
+
+        let unsubscribe: (() => void) | null = null;
+        let isMounted = true;
+
+        const socketClient = getSocketClient(apiKey);
+
+        // Connect to WebSocket
+        socketClient.connect().then(() => {
+            if (!isMounted) {
+                console.log('[useLiveAccounts] Component unmounted during connection, skipping subscription');
+                return;
+            }
+
+            console.log('[useLiveAccounts] WebSocket connected successfully');
+            socketConnected.current = true;
+            setIsConnected(true);
+
+            // Subscribe to updates
+            unsubscribe = socketClient.onUpdate((message: MessageWrapper) => {
+                if (isMounted) {
+                    handleSocketUpdate(message);
+                }
+            });
+
+            // Subscribe to accounts immediately after connection using ref (doesn't cause re-render)
+            const currentAccountIds = accountIdsRef.current;
+            if (currentAccountIds.length > 0) {
+                console.log('[useLiveAccounts] Subscribing to accounts after connection:', currentAccountIds);
+                socketClient.subscribeToAccounts(currentAccountIds);
+                subscribedAccountIds.current = [...currentAccountIds];
+            }
+        }).catch((error) => {
+            console.error('[useLiveAccounts] WebSocket connection failed:', error);
+            console.log('[useLiveAccounts] Falling back to REST API polling only');
+            socketConnected.current = false;
+            setIsConnected(false);
+        });
+
+        // Cleanup only on unmount (not on data changes)
+        return () => {
+            isMounted = false;
+            if (unsubscribe) {
+                unsubscribe();
+            }
+            if (socketConnected.current) {
+                disconnectSocket();
+                socketConnected.current = false;
+                setIsConnected(false);
+            }
+        };
+    }, [apiKey, handleSocketUpdate]); // Removed accountIds - use ref instead
+
+    // Subscribe to accounts when account IDs change (after connection is established)
+    useEffect(() => {
+        // Use isConnected state (reactive) instead of socketConnected ref
+        if (!isConnected || accountIds.length === 0 || !apiKey) {
+            return;
+        }
+
+        // Check if account IDs have actually changed
+        const prevIds = subscribedAccountIds.current;
+        const idsChanged = prevIds.length !== accountIds.length ||
+            !accountIds.every(id => prevIds.includes(id));
+
+        if (idsChanged) {
+            console.log('[useLiveAccounts] Account IDs changed, re-subscribing:', accountIds);
+            const socketClient = getSocketClient(apiKey);
+            socketClient.subscribeToAccounts(accountIds);
+            subscribedAccountIds.current = [...accountIds];
+        }
+    }, [accountIds, apiKey, isConnected]);
 
     // Return loading state and data
     return {
